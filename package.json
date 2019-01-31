@@ -1,0 +1,23 @@
+{
+  "name": "node.ts-streams",
+  "version": "1.0.0",
+  "description": "Node types Streams",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "watch-test": "jest --watch",
+    "prepublish": "npm run build"
+  },
+  "author": "AGallouin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AGallouin/Node.ts-Streams/issues"
+  },
+  "homepage": "https://github.com/AGallouin/Node.ts-Streams#readme",
+  "dependencies": {
+    "typescript": "^3.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^10.12.20"
+  }
+}
