@@ -4,6 +4,12 @@ Simple and lightweight wrapper for Node streams in Typescript.
 
 Correctness and proper typescript typings.
 
+### Install
+
+```$js
+    npm i node.ts-streams
+```
+
 ### How to start
 
 Instanciate the first instance of Stream with an Array or a Readable Stream (ie: from database)
