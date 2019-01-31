@@ -7,11 +7,26 @@ export class Stream<T> {
     this.underlying = stream
   }
   
-  map<O>(map: (value: T) => O): Stream<O> {
+  static fromArray<T>(input: Array<T>): Stream<T> {
+    const readable = new Readable({
+      objectMode: true,
+      read: () => {}
+    })
+  
+    for (let i = 0; i < input.length; i++) {
+      readable.push(input[i])
+    }
+    readable.push(null)
+  
+    return new Stream<T>(readable)
+  }
+  
+  map<O>(map: (value: T) => O | Promise<O>): Stream<O> {
     const stream = new Transform({
       objectMode: true,
       transform: (data, encoding, callback) => {
-        callback(undefined, map(data))
+        Promise.resolve(map(data))
+          .then((v) => callback(undefined, v))
       }
     })
     
@@ -61,17 +76,17 @@ export class Stream<T> {
     return new Stream<T>(stream)
   }
   
-  addWritingStream(write: (chunk: T, encoding: string, callback: (error?: Error | null) => void) => void): Promise<void> {
+  addWritingStream(write: (chunk: T, encoding: string, callback: (error?: Error | null) => void) => void): Promise<boolean> {
     return new Promise((resolve, reject) => {
       const stream = new Writable({ objectMode: true, write })
       
       this.underlying
         .pipe(stream)
         .on('finish', () => {
-          resolve()
+          resolve(true)
         })
         .on('error', () => {
-          reject()
+          reject(false)
         })
     })
   }
@@ -86,7 +101,7 @@ export class Stream<T> {
       objectMode: true,
       write: (curr, encoding, next) => {
         acc.push(curr)
-        if (acc.length === nbElements - 1) {
+        if (acc.length === nbElements) {
           rStream.push(acc)
           acc = []
         }
@@ -97,7 +112,9 @@ export class Stream<T> {
     this.underlying
       .pipe(wStream)
       .on('finish', () => {
-        rStream.push(acc)
+        if (acc.length > 0) {
+          rStream.push(acc)
+        }
         rStream.push(null)
       })
     
