@@ -1,7 +1,9 @@
 {
   "name": "node.ts-streams",
-  "version": "1.0.0",
-  "description": "Node types Streams",
+  "version": "1.0.1",
+  "description": "Node Streams with typescript",
+  "main": "dist/streams.js",
+  "types" : "dist/streams.d.ts",
   "scripts": {
     "build": "tsc",
     "test": "jest",
