@@ -1,18 +1,26 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "moduleResolution": "node",
+    "composite": true,
     "sourceMap": true,
-    "declaration": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitReturns": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": "src",
-    "outDir": "./dist",
-    "lib": ["es6", "es7"]
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "noUnusedParameters": true,
+    "strict": true,
+    "lib": ["dom", "es2017", "esnext", "es2019", "es2019.object"],
+    "declaration": true,
+    "declarationMap": true,
+    "noEmitOnError": true,
+    "skipLibCheck": true,
+    "noErrorTruncation": true,
+    "noUnusedLocals": true,
+    "target": "es2022",
+    "rootDir": "src",
+    "outDir": "build",
+    "types": ["node", "jest"]
   },
-  "exclude": [
-    "node_modules",
-    "**/*.test.ts"
-  ]
+  "exclude": ["**/build/**/*", "node_modules", "**/node_modules/*", "**/.rollup.cache/*"]
 }
