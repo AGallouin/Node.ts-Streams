@@ -1,4 +1,10 @@
-import { Readable, Transform, Writable } from "stream";
+import { Readable, Writable } from "stream";
+
+type MergeValue<T extends Array<Stream<any>>> = T[number] extends Stream<infer R> ? R : never;
+
+type ExtractValue<T extends Array<Stream<any>>> = {
+  [P in keyof T]: T[P] extends Stream<infer R> ? R | undefined : never;
+};
 
 /**
  * A Stream<T> maintains an underlying instance of a node stream and provides usefull methods to
@@ -9,15 +15,23 @@ import { Readable, Transform, Writable } from "stream";
 export class Stream<T> {
   private readonly underlying: Readable;
 
-  /**
-   * If you have a Readable stream you want to wrap into a Stream, use this method. A Node JS
-   * @constructor
-   * @param {Readable} stream Typescript cannot infer the type of the stream data automatically,
-   * so for readability (an avoid an any), explicitly specify the type of the data.
-   * ie. new Stream<number>(nodeJsNativeStream)
-   */
-  constructor(stream: Readable) {
-    this.underlying = stream;
+  constructor() {
+    this.underlying = new Readable({
+      objectMode: true,
+      read: () => {},
+    });
+  }
+
+  public push(e: T) {
+    this.underlying.push({ data: e });
+  }
+
+  public end() {
+    this.underlying.push(null);
+  }
+
+  public emit(eventName: "error", paylaod: Error) {
+    this.underlying.emit(eventName, paylaod);
   }
 
   /**
@@ -27,21 +41,18 @@ export class Stream<T> {
    * @returns {Stream<T>}
    */
   static FromPromise<T>(input: Promise<T>): Stream<T> {
-    const rStream = new Readable({
-      objectMode: true,
-      read: () => {},
-    });
+    const rStream = new Stream<T>();
 
     input
       .then((data) => {
         rStream.push(data);
-        rStream.push(null);
+        rStream.end();
       })
       .catch((e) => {
         rStream.emit("error", e);
       });
 
-    return new Stream<T>(rStream);
+    return rStream;
   }
 
   /**
@@ -51,17 +62,112 @@ export class Stream<T> {
    * @returns {Stream<T>}
    */
   static FromArray<T>(input: Array<T>): Stream<T> {
-    const rStream = new Readable({
-      objectMode: true,
-      read: () => {},
-    });
+    const rStream = new Stream<T>();
 
     for (let i = 0; i < input.length; i++) {
       rStream.push(input[i]);
     }
-    rStream.push(null);
+    rStream.end();
 
-    return new Stream<T>(rStream);
+    return rStream;
+  }
+
+  /**
+   * Merges [Stream<T>, Stream<U>, Stream<V>, ...] into Stream<T | U | V | ...>
+   * It will exhaust when all streams are exhausted.
+   *
+   * @param {Stream<_>} arrayOfStreams Stream array
+   * @returns {Stream<[_]>}
+   */
+  static Merge<T extends Array<Stream<any>>>(arrayOfStreams: T): Stream<MergeValue<T>> {
+    const rStream = new Stream<MergeValue<T>>();
+
+    let opennedStreams = arrayOfStreams.length;
+
+    arrayOfStreams.map((stream) => {
+      const wStream = new Writable({
+        objectMode: true,
+        write: (curr, _, next) => {
+          rStream.push(curr.data);
+          next();
+        },
+      });
+
+      stream.underlying.on("error", (e) => {
+        rStream.emit("error", e);
+      });
+
+      stream.underlying.pipe(wStream).on("finish", () => {
+        opennedStreams--;
+        if (opennedStreams === 0) {
+          rStream.end();
+          return;
+        }
+      });
+    });
+
+    return rStream;
+  }
+
+  /**
+   * Merges [Stream<T>, Stream<U>, Stream<V>, ...] into Stream<[T, U, V, ...]>
+   * It will pause until an instance of T, U, V, ... is provided until exhaustion of each ones.
+   * ie. if Stream<U> is exhausted, it will push [T, undefined, V, ...]
+   *
+   * @param {Stream<_>} arrayOfStreams Stream array
+   * @returns {Stream<[_]>}
+   */
+  static MergeInOrder<T extends [Stream<any>] | Array<Stream<any>>>(
+    arrayOfStreams: T
+  ): Stream<ExtractValue<T>> {
+    const rStream = new Stream<ExtractValue<T>>();
+
+    let acc: ExtractValue<T> = [] as any;
+    let accState = 0;
+    let nexts: Array<(error?: Error | null) => void> = [];
+    let opennedStreams = arrayOfStreams.length;
+
+    const resetAndNext = () => {
+      rStream.push(acc);
+      acc = [] as any;
+      accState = 0;
+      const copy = nexts;
+      nexts = [];
+      copy.map((n) => n());
+    };
+
+    arrayOfStreams.map((stream, index) => {
+      const wStream = new Writable({
+        objectMode: true,
+        write: (curr, _, next) => {
+          acc[index] = curr.data;
+          nexts.push(next);
+          accState++;
+
+          if (accState === opennedStreams) {
+            resetAndNext();
+          }
+        },
+      });
+
+      stream.underlying.on("error", (e) => {
+        rStream.emit("error", e);
+      });
+
+      stream.underlying.pipe(wStream).on("finish", () => {
+        opennedStreams--;
+        if (opennedStreams === 0) {
+          rStream.end();
+          return;
+        }
+
+        if (accState === opennedStreams) {
+          resetAndNext();
+        }
+      });
+    });
+
+    return rStream;
   }
 
   /**
@@ -75,22 +181,19 @@ export class Stream<T> {
    * @returns {Stream<O>}
    */
   map<O>(callbackfn: (value: T) => O | Promise<O>): Stream<O> {
-    const rStream = new Readable({
-      objectMode: true,
-      read: () => {},
-    });
-
+    const rStream = new Stream<O>();
     const wStream = new Writable({
       objectMode: true,
       write: async (chunk, _, next) => {
         Promise.resolve()
-          .then(() => callbackfn(chunk))
-          .then((v) => {
-            rStream.push(v);
+          .then(() => callbackfn(chunk.data))
+          .then((data) => {
+            rStream.push(data);
             next();
           })
           .catch((e) => {
-            next(e);
+            rStream.emit("error", e);
+            next();
           });
       },
     });
@@ -104,10 +207,10 @@ export class Stream<T> {
         rStream.emit("error", e);
       })
       .on("finish", () => {
-        rStream.push(null);
+        rStream.end();
       });
 
-    return new Stream<O>(rStream);
+    return rStream;
   }
 
   /**
@@ -142,41 +245,33 @@ export class Stream<T> {
    * @returns {Stream<O>}
    */
   flatMap<O>(callbackfn: (value: T) => Stream<O>): Stream<O> {
-    const rStream = new Readable({
-      objectMode: true,
-      read: () => {},
+    const rStream = new Stream<O>();
+
+    this.underlying.on("error", (e) => {
+      rStream.emit("error", e);
     });
 
-    const wStream = new Writable({
-      objectMode: true,
-      write: (chunk, _, next) => {
-        callbackfn(chunk)
-          .addWritingStream((mChunk, _, mNext) => {
-            rStream.push(mChunk);
-            mNext();
-          })
-          .then(() => {
-            next();
-          })
-          .catch((e) => {
-            next(e);
-          });
-      },
-    });
-
-    this.underlying
-      .on("error", (e) => {
-        rStream.emit("error", e);
+    this.addWritingStream((chunk, _, next) => {
+      callbackfn(chunk)
+        .addWritingStream((data, _, mNext) => {
+          rStream.push(data);
+          mNext();
+        })
+        .then(() => {
+          next();
+        })
+        .catch((e) => {
+          next(e);
+        });
+    })
+      .then(() => {
+        rStream.end();
       })
-      .pipe(wStream)
-      .on("error", (e) => {
+      .catch((e) => {
         rStream.emit("error", e);
-      })
-      .on("finish", () => {
-        rStream.push(null);
       });
 
-    return new Stream<O>(rStream);
+    return rStream;
   }
 
   /**
@@ -192,17 +287,14 @@ export class Stream<T> {
    * @returns {Stream<O>}
    */
   reduce<O>(callbackfn: (acc: O, curr: T) => O, initialValue: O): Stream<O> {
-    const rStream = new Readable({
-      objectMode: true,
-      read: () => {},
-    });
+    const rStream = new Stream<O>();
 
     let acc = initialValue;
     const wStream = new Writable({
       objectMode: true,
       write: (curr, _, next) => {
         try {
-          acc = callbackfn(acc, curr);
+          acc = callbackfn(acc, curr.data);
           next();
         } catch (e) {
           next(e as any);
@@ -218,10 +310,10 @@ export class Stream<T> {
 
     this.underlying.pipe(wStream).on("finish", () => {
       rStream.push(acc);
-      rStream.push(null);
+      rStream.end();
     });
 
-    return new Stream<O>(rStream);
+    return rStream;
   }
 
   /**
@@ -233,28 +325,34 @@ export class Stream<T> {
    * @returns {Stream<T>}
    */
   filter(callbackfn: (value: T) => boolean): Stream<T> {
-    const tStream = new Transform({
+    const rStream = new Stream<T>();
+    const wStream = new Writable({
       objectMode: true,
-      transform: (data, _, callback) => {
+      write: async (chunk, _, next) => {
         try {
-          if (callbackfn(data)) {
-            callback(undefined, data);
-          } else {
-            callback();
+          if (callbackfn(chunk.data)) {
+            rStream.push(chunk.data);
           }
+          next();
         } catch (e) {
-          callback(e as any);
+          rStream.emit("error", e as any);
         }
       },
     });
 
-    this.underlying.on("error", (e) => {
-      tStream.emit("error", e);
-    });
+    this.underlying
+      .on("error", (e) => {
+        rStream.emit("error", e);
+      })
+      .pipe(wStream)
+      .on("error", (e) => {
+        rStream.emit("error", e);
+      })
+      .on("finish", () => {
+        rStream.end();
+      });
 
-    this.underlying.pipe(tStream);
-
-    return new Stream<T>(tStream);
+    return rStream;
   }
 
   /**
@@ -276,7 +374,7 @@ export class Stream<T> {
         objectMode: true,
         write: async (chunk, encoding, next) => {
           try {
-            callbackfn(chunk, encoding, next);
+            callbackfn(chunk.data, encoding, next);
           } catch (e) {
             next(e as any);
           }
@@ -308,10 +406,7 @@ export class Stream<T> {
    */
   split(nbElements: number): Stream<Array<T>> {
     let acc: Array<T> = [];
-    const rStream = new Readable({
-      objectMode: true,
-      read: () => {},
-    });
+    const rStream = new Stream<Array<T>>();
 
     const wStream = new Writable({
       objectMode: true,
@@ -333,10 +428,10 @@ export class Stream<T> {
       if (acc.length > 0) {
         rStream.push(acc);
       }
-      rStream.push(null);
+      rStream.end();
     });
 
-    return new Stream<Array<T>>(rStream);
+    return rStream;
   }
 
   /**
@@ -352,7 +447,7 @@ export class Stream<T> {
       const wStream = new Writable({
         objectMode: true,
         write: (curr, _, next) => {
-          acc.push(curr);
+          acc.push(curr.data);
           next();
         },
       });

@@ -4,7 +4,7 @@ import { Fixtures } from ".";
 
 test("Split must create chunks", async () => {
   expect.assertions(51);
-  const stream = new Stream<Fixtures.DefaultStreamItem>(Fixtures.createDefaultObjectStream());
+  const stream = Fixtures.createDefaultObjectStream();
 
   const res = await stream.split(2).addWritingStream((chunk, _, next) => {
     expect(chunk.length).toEqual(2);

@@ -1,10 +1,8 @@
-import { Stream } from "../streams";
-
 import { Fixtures } from ".";
 
 test("Reduce must compute data", async () => {
   expect.assertions(2);
-  const stream = new Stream<Fixtures.DefaultStreamItem>(Fixtures.createDefaultObjectStream());
+  const stream = Fixtures.createDefaultObjectStream();
 
   const res = await stream
     .reduce((acc, curr) => {
@@ -21,7 +19,7 @@ test("Reduce must compute data", async () => {
 test("Reduce should handle errors", async () => {
   expect.assertions(1);
 
-  const stream = new Stream<Fixtures.DefaultStreamItem>(Fixtures.createDefaultObjectStream());
+  const stream = Fixtures.createDefaultObjectStream();
 
   try {
     await stream
@@ -36,7 +34,7 @@ test("Reduce should handle errors", async () => {
 
 test("Reduce should pipe errors", async () => {
   expect.assertions(1);
-  const stream = new Stream<Fixtures.DefaultStreamItem>(Fixtures.createDefaultObjectStream());
+  const stream = Fixtures.createDefaultObjectStream();
 
   try {
     await stream

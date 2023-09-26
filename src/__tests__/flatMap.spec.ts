@@ -1,14 +1,12 @@
-import { Stream } from "../streams";
-
 import { Fixtures } from ".";
 
 test("Flat map should merge streams", async () => {
   expect.assertions(1);
-  const stream = new Stream<number>(Fixtures.createDefaultNumberStream(0, 10));
+  const stream = Fixtures.createDefaultNumberStream(0, 10);
 
   const res = await stream
     .flatMap((data) => {
-      return new Stream<number>(Fixtures.createDefaultNumberStream(0, 10)).map((c) => {
+      return Fixtures.createDefaultNumberStream(0, 10).map((c) => {
         return data * c;
       });
     })
@@ -26,11 +24,11 @@ test("Flat map should merge streams", async () => {
 
 test("Flat map should merge Async streams", async () => {
   expect.assertions(1);
-  const stream = new Stream<number>(Fixtures.createDefaultNumberStream(1, 1));
+  const stream = Fixtures.createDefaultNumberStream(1, 1);
 
   const res = await stream
     .flatMap(() => {
-      return new Stream<number>(Fixtures.createAsyncStream(0, 10, 200));
+      return Fixtures.createAsyncStream(0, 10, 200);
     })
     .toArray();
 
@@ -48,12 +46,12 @@ test("Flat map should merge Async streams", async () => {
 test("Flat Map should handle error", async () => {
   expect.assertions(1);
 
-  const stream = new Stream<Fixtures.DefaultStreamItem>(Fixtures.createDefaultObjectStream());
+  const stream = Fixtures.createDefaultObjectStream();
 
   try {
     await stream
       .flatMap(() => {
-        return new Stream<number>(Fixtures.createAsyncStream(0, 10, 200)).map(() => {
+        return Fixtures.createAsyncStream(0, 10, 200).map(() => {
           throw "This is an error";
         });
       })
@@ -63,3 +61,20 @@ test("Flat Map should handle error", async () => {
   }
 });
 
+test("Flat map should pipe errors", async () => {
+  expect.assertions(1);
+  const stream = Fixtures.createDefaultObjectStream();
+
+  try {
+    await stream
+      .map(() => {
+        throw "This is an error";
+      })
+      .flatMap(() => {
+        return Fixtures.createAsyncStream(0, 10, 200);
+      })
+      .toArray();
+  } catch (err) {
+    expect(err).toEqual("This is an error");
+  }
+});

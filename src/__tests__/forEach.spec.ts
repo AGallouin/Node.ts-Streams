@@ -1,11 +1,10 @@
-import { Stream } from "../streams";
-
 import { Fixtures } from ".";
+
 import { setTimeout } from "timers/promises";
 
 test("Foreach must iterate on data sync", async () => {
   expect.assertions(4);
-  const stream = new Stream<Fixtures.DefaultStreamItem>(Fixtures.createDefaultObjectStream(0, 3));
+  const stream = Fixtures.createDefaultObjectStream(0, 3);
 
   const res = await stream.forEach((item, i) => {
     expect(item).toEqual({ id: i, info: `information::${i}` });
@@ -16,7 +15,7 @@ test("Foreach must iterate on data sync", async () => {
 
 test("Foreach must transform data Async", async () => {
   expect.assertions(5);
-  const stream = new Stream<Fixtures.DefaultStreamItem>(Fixtures.createDefaultObjectStream(0, 3));
+  const stream = Fixtures.createDefaultObjectStream(0, 3);
   let counter = 0;
 
   const res = await stream.forEach(async (item) => {
@@ -32,7 +31,7 @@ test("Foreach must transform data Async", async () => {
 test("Foreach must handle errors", async () => {
   expect.assertions(1);
 
-  const stream = new Stream<Fixtures.DefaultStreamItem>(Fixtures.createDefaultObjectStream(0, 3));
+  const stream = Fixtures.createDefaultObjectStream(0, 3);
 
   try {
     await stream.forEach(() => {

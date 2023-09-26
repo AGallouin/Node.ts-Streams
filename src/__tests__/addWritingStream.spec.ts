@@ -5,7 +5,7 @@ import { Fixtures } from ".";
 test("Add Writting Stream should handle errors in previous stream", async () => {
   expect.assertions(1);
 
-  const stream = new Stream<Fixtures.DefaultStreamItem>(Fixtures.createDefaultObjectStream());
+  const stream = Fixtures.createDefaultObjectStream();
 
   try {
     await stream

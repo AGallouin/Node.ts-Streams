@@ -1,60 +1,55 @@
-import { Readable } from "stream";
+import { Stream } from "../index";
 
 export interface DefaultStreamItem {
   id: number;
   info: string;
 }
 
-export function createDefaultObjectStream(initialValue = 0, length = 100): Readable {
-  const readable = new Readable({
-    objectMode: true,
-    read: () => {},
-  });
+export function createDefaultObjectStream(
+  initialValue = 0,
+  length = 100
+): Stream<DefaultStreamItem> {
+  const readable = new Stream<DefaultStreamItem>();
 
   for (let i = 0; i < length; i++) {
     readable.push({ id: i + initialValue, info: `information::${i + initialValue}` });
   }
 
-  readable.push(null);
+  readable.end();
 
   return readable;
 }
 
-export function createDefaultNumberStream(initialValue = 0, length = 100): Readable {
-  const readable = new Readable({
-    objectMode: true,
-    read: () => {},
-  });
+export function createDefaultNumberStream(initialValue = 0, length = 100): Stream<number> {
+  const readable = new Stream<number>();
 
   for (let i = 0; i < length; i++) {
     readable.push(i + initialValue);
   }
 
-  readable.push(null);
+  readable.end();
 
   return readable;
 }
 
-export function createDefaultStringStream(initialValue = 0, length = 100): Readable {
-  const readable = new Readable({
-    objectMode: true,
-    read: () => {},
-  });
+export function createDefaultStringStream(initialValue = 0, length = 100): Stream<string> {
+  const readable = new Stream<string>();
 
   for (let i = 0; i < length; i++) {
     readable.push(`information::${i + initialValue}`);
   }
 
-  readable.push(null);
+  readable.end();
 
   return readable;
 }
 
-export function createAsyncStream(initialValue = 0, length = 100, delay = 0): Readable {
-  const readable = new Readable({
-    objectMode: true,
-    read: () => {},
-  });
+export function createAsyncStream(
+  initialValue = 0,
+  length = 100,
+  delay = 0
+): Stream<DefaultStreamItem> {
+  const readable = new Stream<DefaultStreamItem>();
 
   let numberOfElements = 0;
   let intervalHolder: NodeJS.Timeout | undefined = undefined;
@@ -67,7 +62,7 @@ export function createAsyncStream(initialValue = 0, length = 100, delay = 0): Re
     numberOfElements++;
     if (numberOfElements >= length && intervalHolder) {
       clearInterval(intervalHolder);
-      readable.push(null);
+      readable.end();
     }
   }, delay);
 

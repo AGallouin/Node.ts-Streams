@@ -1,10 +1,8 @@
-import { Stream } from "../streams";
-
 import { Fixtures } from ".";
 
 test("Map must transform data sync", async () => {
   expect.assertions(4);
-  const stream = new Stream<Fixtures.DefaultStreamItem>(Fixtures.createDefaultObjectStream(0, 3));
+  const stream = Fixtures.createDefaultObjectStream(0, 3);
 
   const res = await stream
     .map((data) => {
@@ -23,7 +21,7 @@ test("Map must transform data sync", async () => {
 
 test("Map must transform data Async", async () => {
   expect.assertions(101);
-  const stream = new Stream<Fixtures.DefaultStreamItem>(Fixtures.createDefaultObjectStream());
+  const stream = Fixtures.createDefaultObjectStream();
 
   const res = await stream
     .map((data) => {
@@ -43,7 +41,7 @@ test("Map must transform data Async", async () => {
 test("Map should handle errors", async () => {
   expect.assertions(1);
 
-  const stream = new Stream<Fixtures.DefaultStreamItem>(Fixtures.createDefaultObjectStream());
+  const stream = Fixtures.createDefaultObjectStream();
 
   try {
     await stream
@@ -58,7 +56,7 @@ test("Map should handle errors", async () => {
 
 test("Map should pipe errors", async () => {
   expect.assertions(1);
-  const stream = new Stream<Fixtures.DefaultStreamItem>(Fixtures.createDefaultObjectStream());
+  const stream = Fixtures.createDefaultObjectStream();
 
   try {
     await stream
