@@ -14,6 +14,12 @@ test("Split must create chunks", async () => {
   expect(res).toEqual(true);
 });
 
+test("Split chunks must contain the stream values", async () => {
+  const res = await Stream.FromArray([1, 2, 3, 4, 5]).split(2).toArray();
+
+  expect(res).toEqual([[1, 2], [3, 4], [5]]);
+});
+
 test("Split should pipe errors", async () => {
   expect.assertions(1);
   const stream = Stream.FromArray(Fixtures.createDefaultArray());

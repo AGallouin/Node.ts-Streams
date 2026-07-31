@@ -31,6 +31,42 @@ test("Filter should handle error", async () => {
   }
 });
 
+test("Filter should narrow types with a type guard", async () => {
+  const stream = Stream.FromArray<number | null>([1, null, 2, null, 3]);
+
+  const res: number[] = await stream.filter((e): e is number => e !== null).toArray();
+
+  expect(res).toEqual([1, 2, 3]);
+});
+
+test("Filter should stop the pipeline after a throwing element", async () => {
+  expect.assertions(2);
+  let calls = 0;
+
+  async function* generate() {
+    for (let i = 0; i < 1000; i++) {
+      yield i;
+    }
+  }
+
+  try {
+    await Stream.FromIterable(generate())
+      .filter((v) => {
+        calls++;
+        if (v === 5) {
+          throw "This is an error";
+        }
+        return true;
+      })
+      .toArray();
+  } catch (err) {
+    expect(err).toEqual("This is an error");
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(calls).toBeLessThan(1000);
+});
+
 test("Filter should pipe errors", async () => {
   expect.assertions(1);
   const stream = Stream.FromArray(Fixtures.createDefaultArray());
