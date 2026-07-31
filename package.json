@@ -1,7 +1,26 @@
 {
   "name": "node.ts-streams",
-  "version": "1.1.0",
-  "description": "Node Streams with typescript",
+  "version": "2.0.0",
+  "description": "Typed, chainable wrapper around Node object-mode streams: backpressure, concurrency-controlled map, merge, split, batching and async iteration",
+  "keywords": [
+    "stream",
+    "streams",
+    "typescript",
+    "backpressure",
+    "object-mode",
+    "async-iterator",
+    "async-iterable",
+    "pipeline",
+    "map",
+    "merge",
+    "batch",
+    "concurrency",
+    "etl"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": false,
   "main": "build/index.cjs",
   "module": "build/index.mjs",
   "types": "build/index.d.ts",

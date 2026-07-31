@@ -47,3 +47,24 @@ test("Add Writting Stream should handle errors thrown in writer function", async
     expect(e).toEqual("this is an error");
   }
 });
+
+test("Add Writting Stream surfaces an error thrown after next() was called", async () => {
+  const stream = Stream.FromArray([1, 2, 3]);
+
+  await expect(
+    stream.addWritingStream((_, __, next) => {
+      next();
+      throw new Error("late error");
+    })
+  ).rejects.toThrow("late error");
+});
+
+test("Add Writting Stream surfaces a rejecting async callback", async () => {
+  const stream = Stream.FromArray([1, 2, 3]);
+
+  await expect(
+    stream.addWritingStream(async () => {
+      throw new Error("async error");
+    })
+  ).rejects.toThrow("async error");
+});

@@ -1,10 +1,10 @@
 import { Fixtures } from ".";
 
 test("Reduce must compute data", async () => {
-  expect.assertions(2);
+  expect.assertions(1);
   const stream = Fixtures.createDefaultObjectStream();
 
-  const res = await stream
+  await stream
     .reduce((acc, curr) => {
       return acc + curr.id;
     }, 0)
@@ -12,8 +12,6 @@ test("Reduce must compute data", async () => {
       expect(value).toEqual(4950); // 4950 = (99 * 100)/2
       next();
     });
-
-  expect(res).toEqual(true);
 });
 
 test("Reduce should handle errors", async () => {

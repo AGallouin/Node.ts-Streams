@@ -68,6 +68,64 @@ test("MergeInOrder must group values by rank", async () => {
   ]);
 });
 
+test("Merge of an empty array ends immediately", async () => {
+  expect(await Stream.Merge([]).toArray()).toEqual([]);
+});
+
+test("MergeInOrder of an empty array ends immediately", async () => {
+  expect(await Stream.MergeInOrder([]).toArray()).toEqual([]);
+});
+
+test("Merge fails with a premature close when a source is destroyed directly", async () => {
+  const a = new Stream<number>();
+  const b = new Stream<number>();
+  const merged = Stream.Merge([a, b]);
+  const result = merged.toArray();
+
+  await a.pushAsync(1);
+  a.destroy();
+
+  await expect(result).rejects.toThrow("Premature close");
+});
+
+test("MergeInOrder fails with a premature close when a source is destroyed directly", async () => {
+  const a = new Stream<number>();
+  const merged = Stream.MergeInOrder([a, Fixtures.createDefaultNumberStream(0, 3)]);
+  const result = merged.toArray();
+
+  a.destroy();
+
+  await expect(result).rejects.toThrow("Premature close");
+});
+
+test("MergeInOrder pushes dense rows with an explicit undefined for exhausted sources", async () => {
+  const merged = Stream.MergeInOrder([
+    Fixtures.createDefaultNumberStream(0, 3),
+    Fixtures.createDefaultStringStream(0, 1),
+  ]);
+
+  const res = await merged.toArray();
+
+  expect(res).toEqual([
+    [0, "information::0"],
+    [1, undefined],
+    [2, undefined],
+  ]);
+  // No array holes: every column must be a real own property of every row.
+  expect(res.every((row) => row.length === 2 && 0 in row && 1 in row)).toBe(true);
+});
+
+test("Merge with an already consumed source throws without claiming the other sources", async () => {
+  const consumed = Stream.FromArray([1]);
+  await consumed.toArray();
+  const fresh = Stream.FromArray([2]);
+
+  expect(() => Stream.Merge([fresh, consumed])).toThrow("already consumed");
+
+  // fresh must not have been claimed or wired by the failed merge
+  expect(await fresh.toArray()).toEqual([2]);
+});
+
 test("MergeInOrder should terminate even if a source stream errors", async () => {
   const merged = Stream.MergeInOrder([
     Fixtures.createDefaultNumberStream(0, 3),

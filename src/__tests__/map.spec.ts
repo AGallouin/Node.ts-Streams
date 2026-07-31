@@ -3,10 +3,10 @@ import { Stream } from "../streams";
 import { Fixtures } from ".";
 
 test("Map must transform data sync", async () => {
-  expect.assertions(4);
+  expect.assertions(3);
   const stream = Fixtures.createDefaultObjectStream(0, 3);
 
-  const res = await stream
+  await stream
     .map((data) => {
       return {
         ...data,
@@ -17,15 +17,13 @@ test("Map must transform data sync", async () => {
       expect(info.id).toEqual("This is now a string");
       next();
     });
-
-  expect(res).toEqual(true);
 });
 
 test("Map must transform data Async", async () => {
-  expect.assertions(101);
+  expect.assertions(100);
   const stream = Fixtures.createDefaultObjectStream();
 
-  const res = await stream
+  await stream
     .map((data) => {
       return Promise.resolve({
         ...data,
@@ -36,8 +34,6 @@ test("Map must transform data Async", async () => {
       expect(info.id).toEqual("This is now a string");
       next();
     });
-
-  expect(res).toEqual(true);
 });
 
 test("Map must run callbacks concurrently while keeping the output order", async () => {
@@ -81,6 +77,47 @@ test("Map should pipe errors when running concurrently", async () => {
   } catch (err) {
     expect(err).toEqual("This is an error");
   }
+});
+
+test("Map with concurrency does not fire an unhandled rejection on a fast failure", async () => {
+  let unhandled = 0;
+  const handler = () => {
+    unhandled++;
+  };
+  process.on("unhandledRejection", handler);
+
+  const res = await Stream.FromArray([1, 2, 3])
+    .map(
+      async (v) => {
+        // v === 2 fails immediately while v === 1 is still pending: its rejection is
+        // only awaited when the ordered output chain reaches it.
+        if (v === 2) {
+          throw new Error("fast failure");
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return v;
+      },
+      { concurrency: 3 }
+    )
+    .toArray()
+    .catch((e) => ({ err: (e as Error).message }));
+
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  process.removeListener("unhandledRejection", handler);
+
+  expect(res).toEqual({ err: "fast failure" });
+  expect(unhandled).toEqual(0);
+});
+
+test("Map flattens promise return types even with an explicit type argument", async () => {
+  const res = await Stream.FromArray([1, 2])
+    .map<Promise<number>>((v) => Promise.resolve(v * 2))
+    .toArray();
+
+  // res is number[] both at the type level (Awaited<O>) and at runtime
+  const doubled: Array<number> = res;
+  expect(doubled).toEqual([2, 4]);
+  expect(res.every((v) => typeof v === "number")).toBe(true);
 });
 
 test("Map should handle errors", async () => {

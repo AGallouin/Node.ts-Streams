@@ -3,15 +3,22 @@ import { Stream } from "../streams";
 import { Fixtures } from ".";
 
 test("Split must create chunks", async () => {
-  expect.assertions(51);
+  expect.assertions(50);
   const stream = Fixtures.createDefaultObjectStream();
 
-  const res = await stream.split(2).addWritingStream((chunk, _, next) => {
+  await stream.split(2).addWritingStream((chunk, _, next) => {
     expect(chunk.length).toEqual(2);
     next();
   });
+});
 
-  expect(res).toEqual(true);
+test("Split clamps invalid chunk sizes to 1 instead of buffering everything", async () => {
+  expect(await Stream.FromArray([1, 2, 3]).split(0).toArray()).toEqual([[1], [2], [3]]);
+  expect(await Stream.FromArray([1, 2, 3]).split(-5).toArray()).toEqual([[1], [2], [3]]);
+  expect(await Stream.FromArray([1, 2, 3, 4]).split(2.7).toArray()).toEqual([
+    [1, 2],
+    [3, 4],
+  ]);
 });
 
 test("Split chunks must contain the stream values", async () => {

@@ -81,6 +81,28 @@ test("breaking out stops an in-flight flatMap inner stream", async () => {
   expect(inner.state.produced).toBeLessThan(100);
 });
 
+test("teardown does not pull an extra element from the source iterable", async () => {
+  let pulled = 0;
+  function* source() {
+    while (true) {
+      pulled++;
+      yield pulled;
+    }
+  }
+
+  const stream = Stream.FromIterable(source());
+  const iterator = stream[Symbol.asyncIterator]();
+  await iterator.next();
+
+  const before = pulled;
+  stream.destroy();
+  await sleep(100);
+
+  // Sources with side effects per pull (DB cursors, paginated APIs) must not be
+  // pulled again once the teardown released the pending pushAsync.
+  expect(pulled).toEqual(before);
+});
+
 test("an error tears down all the sources of a Merge", async () => {
   const source = countingSource();
   const merged = Stream.Merge([

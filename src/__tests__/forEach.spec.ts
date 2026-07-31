@@ -3,28 +3,25 @@ import { Fixtures } from ".";
 import { setTimeout } from "timers/promises";
 
 test("Foreach must iterate on data sync", async () => {
-  expect.assertions(4);
+  expect.assertions(3);
   const stream = Fixtures.createDefaultObjectStream(0, 3);
 
-  const res = await stream.forEach((item, i) => {
+  await stream.forEach((item, i) => {
     expect(item).toEqual({ id: i, info: `information::${i}` });
   });
-
-  expect(res).toEqual(true);
 });
 
 test("Foreach must transform data Async", async () => {
-  expect.assertions(5);
+  expect.assertions(4);
   const stream = Fixtures.createDefaultObjectStream(0, 3);
   let counter = 0;
 
-  const res = await stream.forEach(async (item) => {
+  await stream.forEach(async (item) => {
     await setTimeout(100);
     expect(item).toEqual({ id: counter, info: `information::${counter}` });
     counter++;
   });
 
-  expect(res).toEqual(true);
   expect(counter).toEqual(3);
 });
 
